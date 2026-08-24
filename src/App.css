@@ -222,6 +222,12 @@
   color: #fbbf24 !important;
 }
 
+.active-speech {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: #60a5fa !important;
+  color: #60a5fa !important;
+}
+
 .btn-badge {
   background: #ef4444;
   color: white;

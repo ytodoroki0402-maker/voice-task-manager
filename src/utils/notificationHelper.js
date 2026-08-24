@@ -1,4 +1,4 @@
-// Web Audio API を使用した外部ファイル不要の通知音・ポップアップ通知モジュール
+// Web Audio API & Web Speech API (音声読み上げ) モジュール
 
 let audioCtx = null;
 
@@ -51,6 +51,48 @@ export function playNotificationSound() {
   } catch (err) {
     console.warn("Could not play notification sound:", err);
   }
+}
+
+/**
+ * 新着タスクを自然な日本語音声で読み上げる
+ * 例: 「新しいタスクが入りました。1階、患者ID1234、バイタル確認です。」
+ */
+export function speakTaskNotification(task) {
+  if (!('speechSynthesis' in window)) {
+    console.warn("SpeechSynthesis not supported in this browser.");
+    return;
+  }
+
+  try {
+    // 既存の発声をキャンセルして最新をクリアに喋らせる
+    window.speechSynthesis.cancel();
+
+    const wardText = task.ward && task.ward !== "指定なし" ? `${task.ward}、` : "";
+    const idText = task.patientId === "共通" ? "一般業務、" : task.patientId === "個人" ? "個人メモ、" : task.patientId ? `患者ID ${task.patientId}、` : "";
+    const contentText = task.content || "タスク";
+
+    const fullSpeechText = `新しいタスクが入りました。${wardText}${idText}${contentText}です。`;
+
+    const uttr = new SpeechSynthesisUtterance(fullSpeechText);
+    uttr.lang = 'ja-JP';
+    uttr.rate = 1.0; // 読み上げ速度
+    uttr.pitch = 1.0; // 声の高さ
+
+    window.speechSynthesis.speak(uttr);
+  } catch (err) {
+    console.warn("Failed to speak task:", err);
+  }
+}
+
+/**
+ * 音声読み上げテスト
+ */
+export function testSpeechNotification() {
+  speakTaskNotification({
+    ward: "1階",
+    patientId: "1234",
+    content: "音声読み上げ機能を有効にしました"
+  });
 }
 
 /**

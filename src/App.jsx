@@ -6,16 +6,26 @@ import { parseAudioWithGemini, WARD_COLORS, STATUS } from './utils/commandParser
 import { logTaskEvent, exportLogs } from './utils/dataLogger';
 import { ConversationPanel } from './components/ConversationPanel';
 import { subscribeSharedTasks, publishSharedTasks } from './utils/syncManager';
-import { playNotificationSound, requestNotificationPermission, showTaskNotification } from './utils/notificationHelper';
+import { 
+  playNotificationSound, 
+  speakTaskNotification, 
+  testSpeechNotification, 
+  requestNotificationPermission, 
+  showTaskNotification 
+} from './utils/notificationHelper';
 
 function App() {
   // モード管理 ('shared' | 'personal')
   const [activeTab, setActiveTab] = useState('shared');
   const [isSynced, setIsSynced] = useState(true);
 
-  // 通知設定 (通知音 & ポップアップ)
+  // 通知設定 (通知音 & 音声読み上げ & ポップアップ)
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem('notify_sound_enabled') === 'true';
+  });
+  const [speechEnabled, setSpeechEnabled] = useState(() => {
+    const saved = localStorage.getItem('notify_speech_enabled');
+    return saved === null ? true : saved === 'true'; // デフォルト ON
   });
   const [popupEnabled, setPopupEnabled] = useState(() => {
     return localStorage.getItem('notify_popup_enabled') === 'true';
@@ -44,12 +54,17 @@ function App() {
           if (remoteTasks.length > prevTasksCountRef.current) {
             const newestTask = remoteTasks[remoteTasks.length - 1] || remoteTasks[0];
             
-            // 音がオンならチャイム音再生
+            // 🔊 音声読み上げがオンなら「新しいタスクが入りました、〜〜〜です」と喋る
+            if (localStorage.getItem('notify_speech_enabled') !== 'false' && newestTask) {
+              speakTaskNotification(newestTask);
+            }
+
+            // 🔔 効果音がオンならチャイム音再生
             if (localStorage.getItem('notify_sound_enabled') === 'true') {
               playNotificationSound();
             }
 
-            // ポップアップがオンなら通知表示
+            // 💬 ポップアップがオンなら通知表示
             if (localStorage.getItem('notify_popup_enabled') === 'true' && newestTask) {
               const wardStr = newestTask.ward && newestTask.ward !== '指定なし' ? `[${newestTask.ward}] ` : '';
               const idStr = newestTask.patientId ? `(ID:${newestTask.patientId}) ` : '';
@@ -118,13 +133,23 @@ function App() {
   const [autoScroll, setAutoScroll] = useState(false);
   const tableContainerRef = useAutoScroll(autoScroll, 10000);
 
-  // 通知設定の永続保存
+  // 音声読み上げ設定切り替え
+  const toggleSpeech = () => {
+    const nextVal = !speechEnabled;
+    setSpeechEnabled(nextVal);
+    localStorage.setItem('notify_speech_enabled', String(nextVal));
+    if (nextVal) {
+      testSpeechNotification(); // テスト読み上げ
+    }
+  };
+
+  // 通知音設定切り替え
   const toggleSound = () => {
     const nextVal = !soundEnabled;
     setSoundEnabled(nextVal);
     localStorage.setItem('notify_sound_enabled', String(nextVal));
     if (nextVal) {
-      playNotificationSound(); // テスト再生
+      playNotificationSound();
     }
   };
 
@@ -409,7 +434,7 @@ function App() {
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
           <div className="status-sub-row">
-            <span className="app-subtitle">✨ Gemini AI Powered (v2.1 通知対応版)</span>
+            <span className="app-subtitle">✨ Gemini AI Powered (v2.2 音声読み上げ対応)</span>
             {activeTab === 'shared' ? (
               <span className={`sync-status ${isSynced ? 'synced' : 'syncing'}`}>
                 {isSynced ? '🟢 リアルタイム共有中' : '🟡 接続中...'}
@@ -432,11 +457,20 @@ function App() {
             {isListening ? '⏹️ 停止して解析' : '🎙️ 音声入力'}
           </button>
 
-          {/* 通知音クイック切り替えボタン */}
+          {/* 音声読み上げ切り替えボタン */}
+          <button 
+            className={`btn icon-btn ${speechEnabled ? 'active-speech' : ''}`}
+            onClick={toggleSpeech}
+            title={speechEnabled ? '音声読み上げ: ON' : '音声読み上げ: OFF'}
+          >
+            {speechEnabled ? '🔊' : '🔇'}
+          </button>
+
+          {/* 通知音切り替えボタン */}
           <button 
             className={`btn icon-btn ${soundEnabled ? 'active-sound' : ''}`}
             onClick={toggleSound}
-            title={soundEnabled ? '通知音: ON' : '通知音: OFF'}
+            title={soundEnabled ? '通知チャイム: ON' : '通知チャイム: OFF'}
           >
             {soundEnabled ? '🔔' : '🔕'}
           </button>
@@ -495,8 +529,11 @@ function App() {
               <button className="close-btn" onClick={() => setShowMobileMenu(false)}>✖</button>
             </div>
             <div className="menu-dropdown-list">
+              <button className="menu-item-btn" onClick={toggleSpeech}>
+                {speechEnabled ? '🔊 新着音声読み上げ: ON (タップでOFF)' : '🔇 新着音声読み上げ: OFF (タップでON)'}
+              </button>
               <button className="menu-item-btn" onClick={toggleSound}>
-                {soundEnabled ? '🔔 新着通知音: ON (タップでOFF)' : '🔕 新着通知音: OFF (タップでON)'}
+                {soundEnabled ? '🔔 新着チャイム音: ON (タップでOFF)' : '🔕 新着チャイム音: OFF (タップでON)'}
               </button>
               <button className="menu-item-btn" onClick={togglePopup}>
                 {popupEnabled ? '💬 ポップアップ通知: ON (タップでOFF)' : '🔕 ポップアップ通知: OFF (タップでON)'}
