@@ -1,3 +1,4 @@
+/* App Main Container & Theme Modes */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -6,6 +7,17 @@
   max-width: 1600px;
   margin: 0 auto;
   box-sizing: border-box;
+  transition: background-color 0.4s ease, border-color 0.4s ease;
+}
+
+/* 🌐 Mode 1: Shared Theme (Blue/Emerald) */
+.app-container.mode-shared {
+  background: radial-gradient(circle at top left, #0f172a, #0b1329);
+}
+
+/* 👤 Mode 2: Personal Theme (Purple/Violet) */
+.app-container.mode-personal {
+  background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
 }
 
 /* Header & Title Area */
@@ -13,7 +25,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   padding: 14px 20px;
@@ -21,12 +33,23 @@
   border: 1px solid var(--glass-border);
   gap: 12px;
   flex-wrap: wrap;
+  transition: all 0.3s ease;
+}
+
+.mode-shared .header {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+}
+
+.mode-personal .header {
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.2);
 }
 
 .app-title-area {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .app-title-area h1 {
@@ -37,12 +60,112 @@
   letter-spacing: 0.5px;
 }
 
+.status-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .app-subtitle {
   font-size: 0.75rem;
-  color: #60a5fa;
+  color: #94a3b8;
   font-weight: 500;
 }
 
+.sync-status {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.sync-status.synced {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.sync-status.syncing {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.sync-status.personal {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+/* 🌟 Mode Switch Tabs (部署共有 vs 個人用) 🌟 */
+.mode-switch-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+
+.mode-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.tab-icon {
+  font-size: 1.3rem;
+}
+
+.tab-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.tab-desc {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+/* Active Shared Tab (Blue) */
+.shared-tab.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.4));
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+/* Active Personal Tab (Purple) */
+.personal-tab.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(126, 34, 206, 0.45));
+  border-color: #c084fc;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.35);
+}
+
+/* Buttons */
 .header-actions {
   display: flex;
   gap: 8px;
@@ -69,21 +192,22 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.btn-voice {
+.mode-shared .btn-voice {
   background: #3b82f6;
   border-color: #60a5fa;
-  font-weight: 600;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
-.btn-voice:hover {
-  background: #2563eb;
+.mode-personal .btn-voice {
+  background: #9333ea;
+  border-color: #c084fc;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.5);
 }
 
 .btn-voice.active {
-  background: #ef4444;
-  border-color: #f87171;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6) !important;
   animation: pulse 1.5s infinite;
 }
 
@@ -101,7 +225,7 @@
   margin-left: 2px;
 }
 
-/* Menu Modal/Overlay */
+/* Menu Dropdown Modal */
 .menu-dropdown-overlay {
   position: fixed;
   top: 0;
@@ -182,10 +306,6 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
-.menu-item-btn.danger-item:hover {
-  background: rgba(239, 68, 68, 0.25);
-}
-
 /* Kanban Board Layout */
 .kanban-board {
   display: flex;
@@ -204,6 +324,15 @@
   border-radius: 12px;
   border: 1px solid var(--glass-border);
   overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.mode-shared .kanban-column {
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.mode-personal .kanban-column {
+  border-color: rgba(168, 85, 247, 0.2);
 }
 
 .kanban-column h2 {
@@ -257,6 +386,10 @@
   color: #38bdf8;
 }
 
+.mode-personal .task-id {
+  color: #c084fc;
+}
+
 .task-id.general {
   color: var(--text-muted);
 }
@@ -304,6 +437,12 @@
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.4);
   color: #60a5fa;
+}
+
+.mode-personal .card-action-btn.primary {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #c084fc;
 }
 
 .card-action-btn.success {
@@ -522,9 +661,7 @@
 .detail-tag.patient { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
 .detail-tag.content { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
 
-/* ===================================================
-   📱 Mobile Responsive Layout Optimization (max-width: 768px)
-   =================================================== */
+/* 📱 Mobile Responsive Optimization */
 @media (max-width: 768px) {
   .app-container {
     padding: 10px;
@@ -545,7 +682,28 @@
     font-size: 0.7rem;
   }
 
-  /* 💡 カンバンボードを縦並び（縦配置）に切り替え！ */
+  .mode-switch-tabs {
+    gap: 6px;
+    padding: 4px;
+  }
+
+  .mode-tab {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .tab-icon {
+    font-size: 1.1rem;
+  }
+
+  .tab-title {
+    font-size: 0.85rem;
+  }
+
+  .tab-desc {
+    font-size: 0.65rem;
+  }
+
   .kanban-board {
     flex-direction: column;
     overflow-x: visible;
@@ -555,9 +713,5 @@
   .kanban-column {
     min-width: 100%;
     width: 100%;
-  }
-
-  .kanban-cards {
-    max-height: none;
   }
 }

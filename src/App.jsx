@@ -5,17 +5,26 @@ import { useAutoScroll } from './hooks/useAutoScroll';
 import { parseAudioWithGemini, WARD_COLORS, STATUS } from './utils/commandParser';
 import { logTaskEvent, exportLogs } from './utils/dataLogger';
 import { ConversationPanel } from './components/ConversationPanel';
+import { subscribeSharedTasks, publishSharedTasks } from './utils/syncManager';
 
 function App() {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem('tasks');
+  // モード管理 ('shared' | 'personal')
+  const [activeTab, setActiveTab] = useState('shared');
+  const [isSynced, setIsSynced] = useState(true);
+
+  // 部署共有タスク
+  const [sharedTasks, setSharedTasks] = useState([]);
+
+  // 個人専用タスク (ローカルストレージのみ)
+  const [personalTasks, setPersonalTasks] = useState(() => {
+    const saved = localStorage.getItem('personal_tasks');
     if (saved) return JSON.parse(saved);
     return [
-      { id: 1, patientId: "1234", ward: "1階", content: "バイタル確認", status: "未対応", timestamp: Date.now() },
-      { id: 2, patientId: "共通", ward: "指定なし", content: "来月のシフト表の作成", status: "対応中", timestamp: Date.now() - 1000 }
+      { id: 101, patientId: "個人", ward: "指定なし", content: "業務報告書の作成", status: "未対応", timestamp: Date.now() }
     ];
   });
-  
+
+  // 音声会話履歴
   const [conversationHistory, setConversationHistory] = useState(() => {
     const saved = localStorage.getItem('voice_chat_history');
     if (saved) {
@@ -23,6 +32,7 @@ function App() {
     }
     return [];
   });
+
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -37,6 +47,7 @@ function App() {
       return "";
     }
   });
+
   const [showSettings, setShowSettings] = useState(false);
   const [tempKey, setTempKey] = useState(apiKey);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,9 +61,24 @@ function App() {
   const [autoScroll, setAutoScroll] = useState(false);
   const tableContainerRef = useAutoScroll(autoScroll, 10000);
 
+  // 部署共有タスクのリアルタイム同期購読
   useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
+    const unsubscribe = subscribeSharedTasks(
+      (remoteTasks) => {
+        setSharedTasks(remoteTasks);
+        setIsSynced(true);
+      },
+      () => {
+        setIsSynced(false);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // 個人タスクの保存
+  useEffect(() => {
+    localStorage.setItem('personal_tasks', JSON.stringify(personalTasks));
+  }, [personalTasks]);
 
   useEffect(() => {
     localStorage.setItem('gemini_api_key', apiKey);
@@ -81,8 +107,22 @@ function App() {
     }
   };
 
+  // 現在選択中モードのタスク配列
+  const currentTasks = activeTab === 'shared' ? sharedTasks : personalTasks;
+
+  // タスク更新関数（モードに応じて振り分け）
+  const updateTasksForCurrentMode = (updater) => {
+    if (activeTab === 'shared') {
+      const nextTasks = typeof updater === 'function' ? updater(sharedTasks) : updater;
+      setSharedTasks(nextTasks);
+      publishSharedTasks(nextTasks);
+    } else {
+      setPersonalTasks(updater);
+    }
+  };
+
   const moveTaskStatus = (taskId, newStatus) => {
-    setTasks(prev => {
+    updateTasksForCurrentMode(prev => {
       return prev.map(task => {
         if (task.id === taskId) {
           const updated = { ...task, status: newStatus };
@@ -95,7 +135,7 @@ function App() {
   };
 
   const deleteTask = (taskId) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    updateTasksForCurrentMode(prev => prev.filter(t => t.id !== taskId));
   };
 
   const handleManualAddSubmit = (e) => {
@@ -104,14 +144,14 @@ function App() {
 
     const newTask = {
       id: Date.now(),
-      patientId: manualPatientId.trim() || "共通",
+      patientId: manualPatientId.trim() || (activeTab === 'shared' ? "共通" : "個人"),
       ward: manualWard,
       content: manualContent.trim(),
       status: STATUS.TODO,
       timestamp: Date.now()
     };
 
-    setTasks(prev => [newTask, ...prev]);
+    updateTasksForCurrentMode(prev => [newTask, ...prev]);
     logTaskEvent(newTask, "CREATED");
 
     setManualContent("");
@@ -138,18 +178,19 @@ function App() {
         setLastTranscript(`聞き取り結果: 「${parsed.transcribed_text}」`);
       }
 
+      const modePrefix = activeTab === 'shared' ? '【部署共有】' : '【個人用】';
       let aiMsg = "";
       const wardStr = parsed.ward && parsed.ward !== "指定なし" ? `[${parsed.ward}] ` : "";
       const idStr = parsed.id ? `(ID:${parsed.id}) ` : "";
 
       if (parsed.action === "ADD") {
-        aiMsg = `${wardStr}${idStr}「${parsed.content}」を『未対応』に追加しました。`;
+        aiMsg = `${modePrefix} ${wardStr}${idStr}「${parsed.content}」を『未対応』に追加しました。`;
       } else if (parsed.action === "START") {
-        aiMsg = `${wardStr}${idStr}「${parsed.content}」の対応を開始（『対応中』に移動）しました。`;
+        aiMsg = `${modePrefix} ${wardStr}${idStr}「${parsed.content}」の対応を開始しました。`;
       } else if (parsed.action === "COMPLETE") {
-        aiMsg = `${wardStr}${idStr}「${parsed.content}」を『完了』に移動しました。`;
+        aiMsg = `${modePrefix} ${wardStr}${idStr}「${parsed.content}」を『完了』に移動しました。`;
       } else {
-        aiMsg = parsed.transcribed_text ? `「${parsed.transcribed_text}」を認識しました。` : "音声入力コマンドを処理しました。";
+        aiMsg = `${modePrefix} 「${parsed.transcribed_text}」を処理しました。`;
       }
 
       addHistoryLog(parsed.transcribed_text || "", aiMsg, parsed.action, {
@@ -158,13 +199,13 @@ function App() {
         content: parsed.content
       });
 
-      setTasks(prev => {
+      updateTasksForCurrentMode(prev => {
         let newTasks = [...prev];
         
         if (parsed.action === "ADD") {
           const newTask = {
             id: Date.now(),
-            patientId: parsed.id || "共通",
+            patientId: parsed.id || (activeTab === 'shared' ? "共通" : "個人"),
             ward: parsed.ward,
             content: parsed.content,
             status: parsed.status, 
@@ -205,7 +246,7 @@ function App() {
           } else {
             const newTask = {
               id: Date.now(),
-              patientId: parsed.id || "共通",
+              patientId: parsed.id || (activeTab === 'shared' ? "共通" : "個人"),
               ward: parsed.ward,
               content: parsed.content,
               status: parsed.status,
@@ -230,7 +271,7 @@ function App() {
 
   const { isListening, error, startListening, stopListening } = useSpeech(handleAudioRecorded);
 
-  const sortedTasks = [...tasks].sort((a, b) => b.timestamp - a.timestamp);
+  const sortedTasks = [...currentTasks].sort((a, b) => b.timestamp - a.timestamp);
   const todoTasks = sortedTasks.filter(t => t.status === STATUS.TODO);
   const inProgressTasks = sortedTasks.filter(t => t.status === STATUS.IN_PROGRESS);
   const doneTasks = sortedTasks.filter(t => t.status === STATUS.DONE);
@@ -245,8 +286,8 @@ function App() {
           columnTasks.map(task => (
             <div key={task.id} className={`task-card status-${statusClass}`}>
               <div className="task-card-header">
-                <span className={`task-id ${task.patientId === "共通" ? "general" : ""}`}>
-                  {task.patientId === "共通" ? "一般業務" : `ID: ${task.patientId}`}
+                <span className={`task-id ${task.patientId === "共通" || task.patientId === "個人" ? "general" : ""}`}>
+                  {task.patientId === "共通" ? "一般業務" : task.patientId === "個人" ? "個人メモ" : `ID: ${task.patientId}`}
                 </span>
                 {task.ward !== "指定なし" && (
                   <span 
@@ -294,16 +335,27 @@ function App() {
   );
 
   return (
-    <div className="app-container">
+    <div className={`app-container mode-${activeTab}`}>
       {/* 最上部ヘッダー */}
       <header className="header">
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
-          <span className="app-subtitle">✨ Gemini AI Powered (v2.0 モバイル版)</span>
+          <div className="status-sub-row">
+            <span className="app-subtitle">✨ Gemini AI Powered</span>
+            {activeTab === 'shared' ? (
+              <span className={`sync-status ${isSynced ? 'synced' : 'syncing'}`}>
+                {isSynced ? '🟢 リアルタイム共有中' : '🟡 接続中...'}
+              </span>
+            ) : (
+              <span className="sync-status personal">
+                👤 個人専用（非公開）
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="header-actions">
-          {/* 音声入力ボタン (メイン表示) */}
+          {/* 音声入力ボタン */}
           <button 
             className={`btn btn-voice ${isListening ? 'active' : ''}`}
             onClick={isListening ? stopListening : startListening}
@@ -312,7 +364,7 @@ function App() {
             {isListening ? '⏹️ 停止して解析' : '🎙️ 音声入力'}
           </button>
 
-          {/* 会話履歴クイックボタン */}
+          {/* 会話履歴ボタン */}
           <button 
             className={`btn icon-btn ${showHistoryPanel ? 'active' : ''}`}
             onClick={() => setShowHistoryPanel(!showHistoryPanel)}
@@ -332,7 +384,32 @@ function App() {
         </div>
       </header>
 
-      {/* サブ操作メニューパネル (モーダル風) */}
+      {/* 🌟 2モード切替タブ (部署共有 vs 個人用) 🌟 */}
+      <div className="mode-switch-tabs">
+        <button 
+          className={`mode-tab shared-tab ${activeTab === 'shared' ? 'active' : ''}`}
+          onClick={() => setActiveTab('shared')}
+        >
+          <span className="tab-icon">🌐</span>
+          <div className="tab-text">
+            <span className="tab-title">部署共有ボード</span>
+            <span className="tab-desc">部員全員とリアルタイム同期</span>
+          </div>
+        </button>
+
+        <button 
+          className={`mode-tab personal-tab ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
+        >
+          <span className="tab-icon">👤</span>
+          <div className="tab-text">
+            <span className="tab-title">個人用ボード</span>
+            <span className="tab-desc">自分専用・完全非公開</span>
+          </div>
+        </button>
+      </div>
+
+      {/* サブ操作メニューパネル */}
       {showMobileMenu && (
         <div className="menu-dropdown-overlay" onClick={() => setShowMobileMenu(false)}>
           <div className="menu-dropdown-content" onClick={e => e.stopPropagation()}>
@@ -342,7 +419,7 @@ function App() {
             </div>
             <div className="menu-dropdown-list">
               <button className="menu-item-btn" onClick={() => { setShowAddModal(true); setShowMobileMenu(false); }}>
-                ＋ 手動タスク追加
+                ＋ 手動タスク追加 ({activeTab === 'shared' ? '共有へ' : '個人用へ'})
               </button>
               <button className="menu-item-btn" onClick={() => { setShowHistoryPanel(true); setShowMobileMenu(false); }}>
                 💬 会話・解析履歴 ({conversationHistory.length})
@@ -356,8 +433,13 @@ function App() {
               <button className="menu-item-btn" onClick={() => { exportLogs(); setShowMobileMenu(false); }}>
                 📥 解析ログダウンロード
               </button>
-              <button className="menu-item-btn danger-item" onClick={() => { setTasks([]); setShowMobileMenu(false); }}>
-                🗑️ 全タスクをクリア
+              <button className="menu-item-btn danger-item" onClick={() => { 
+                if (window.confirm(`現在開いている「${activeTab === 'shared' ? '部署共有' : '個人用'}」のタスクをすべて消去しますか？`)) {
+                  updateTasksForCurrentMode([]);
+                }
+                setShowMobileMenu(false); 
+              }}>
+                🗑️ {activeTab === 'shared' ? '共有' : '個人用'}タスクをクリア
               </button>
             </div>
           </div>
@@ -366,7 +448,7 @@ function App() {
 
       {error && <div style={{color: '#ef4444', marginBottom: 10, textAlign: 'center'}}>{error}</div>}
 
-      {/* カンバンボード (画面幅に応じてレスポンシブ縦並び化) */}
+      {/* カンバンボード */}
       <div className="kanban-board">
         {renderColumn(STATUS.TODO, todoTasks, "TODO")}
         {renderColumn(STATUS.IN_PROGRESS, inProgressTasks, "IN_PROGRESS")}
@@ -375,7 +457,7 @@ function App() {
 
       {isListening && (
         <div className="speech-overlay">
-          🎙️ 録音中... 話し終わったら「停止して解析」ボタンを押してください
+          🎙️ 録音中...【{activeTab === 'shared' ? '部署共有' : '個人用'}】に追加されます
         </div>
       )}
 
@@ -401,7 +483,9 @@ function App() {
             background: '#1e293b', padding: '25px', borderRadius: '12px', width: '100%', maxWidth: '450px',
             border: '1px solid #334155'
           }}>
-            <h2 style={{marginTop: 0, color: 'white', fontSize: '1.3rem'}}>＋ タスクを手動追加</h2>
+            <h2 style={{marginTop: 0, color: 'white', fontSize: '1.3rem'}}>
+              ＋ タスクを手動追加 ({activeTab === 'shared' ? '部署共有' : '個人用'})
+            </h2>
             
             <div style={{marginBottom: '15px'}}>
               <label style={{display: 'block', color: '#cbd5e1', marginBottom: '6px'}}>病棟</label>
@@ -427,7 +511,7 @@ function App() {
                 type="text" 
                 value={manualPatientId}
                 onChange={e => setManualPatientId(e.target.value)}
-                placeholder="例: 1234 (空欄の場合は共通業務)"
+                placeholder="例: 1234 (空欄の場合は共通/個人)"
                 style={{
                   width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #475569',
                   background: '#0f172a', color: 'white', boxSizing: 'border-box'
