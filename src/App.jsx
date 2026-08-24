@@ -291,7 +291,7 @@ function App() {
       <header className="header">
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
-          <span className="app-subtitle">✨ Gemini AI Powered</span>
+          <span className="app-subtitle">✨ Gemini AI Powered (v2.0 モバイル版)</span>
         </div>
         
         <div className="header-actions">
