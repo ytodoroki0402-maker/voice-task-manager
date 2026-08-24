@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useSpeech } from './hooks/useSpeech';
 import { useAutoScroll } from './hooks/useAutoScroll';
@@ -6,11 +6,20 @@ import { parseAudioWithGemini, WARD_COLORS, STATUS } from './utils/commandParser
 import { logTaskEvent, exportLogs } from './utils/dataLogger';
 import { ConversationPanel } from './components/ConversationPanel';
 import { subscribeSharedTasks, publishSharedTasks } from './utils/syncManager';
+import { playNotificationSound, requestNotificationPermission, showTaskNotification } from './utils/notificationHelper';
 
 function App() {
   // モード管理 ('shared' | 'personal')
   const [activeTab, setActiveTab] = useState('shared');
   const [isSynced, setIsSynced] = useState(true);
+
+  // 通知設定 (通知音 & ポップアップ)
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('notify_sound_enabled') === 'true';
+  });
+  const [popupEnabled, setPopupEnabled] = useState(() => {
+    return localStorage.getItem('notify_popup_enabled') === 'true';
+  });
 
   // 部署共有タスク
   const [sharedTasks, setSharedTasks] = useState(() => {
@@ -24,11 +33,33 @@ function App() {
     ];
   });
 
-  // 部署共有タスクのリアルタイム同期購読 (ntfy.sh SSE)
+  const prevTasksCountRef = useRef(sharedTasks.length);
+
+  // 部署共有タスクのリアルタイム同期購読
   useEffect(() => {
     const unsubscribe = subscribeSharedTasks(
       (remoteTasks) => {
         if (Array.isArray(remoteTasks)) {
+          // 他人がタスクを追加したか検知 (件数増加時)
+          if (remoteTasks.length > prevTasksCountRef.current) {
+            const newestTask = remoteTasks[remoteTasks.length - 1] || remoteTasks[0];
+            
+            // 音がオンならチャイム音再生
+            if (localStorage.getItem('notify_sound_enabled') === 'true') {
+              playNotificationSound();
+            }
+
+            // ポップアップがオンなら通知表示
+            if (localStorage.getItem('notify_popup_enabled') === 'true' && newestTask) {
+              const wardStr = newestTask.ward && newestTask.ward !== '指定なし' ? `[${newestTask.ward}] ` : '';
+              const idStr = newestTask.patientId ? `(ID:${newestTask.patientId}) ` : '';
+              showTaskNotification(
+                "🏥 部署共有タスク追加",
+                `${wardStr}${idStr}${newestTask.content}`
+              );
+            }
+          }
+          prevTasksCountRef.current = remoteTasks.length;
           setSharedTasks(remoteTasks);
           localStorage.setItem('shared_tasks_cache', JSON.stringify(remoteTasks));
         }
@@ -87,7 +118,31 @@ function App() {
   const [autoScroll, setAutoScroll] = useState(false);
   const tableContainerRef = useAutoScroll(autoScroll, 10000);
 
+  // 通知設定の永続保存
+  const toggleSound = () => {
+    const nextVal = !soundEnabled;
+    setSoundEnabled(nextVal);
+    localStorage.setItem('notify_sound_enabled', String(nextVal));
+    if (nextVal) {
+      playNotificationSound(); // テスト再生
+    }
+  };
 
+  const togglePopup = async () => {
+    if (!popupEnabled) {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setPopupEnabled(true);
+        localStorage.setItem('notify_popup_enabled', 'true');
+        showTaskNotification("🔔 通知設定完了", "新着タスク追加時にポップアップ通知が表示されます");
+      } else {
+        alert("ブラウザの通知許可が得られませんでした。");
+      }
+    } else {
+      setPopupEnabled(false);
+      localStorage.setItem('notify_popup_enabled', 'false');
+    }
+  };
 
   // 個人タスクの保存
   useEffect(() => {
@@ -121,13 +176,12 @@ function App() {
     }
   };
 
-  // 現在選択中モードのタスク配列
   const currentTasks = activeTab === 'shared' ? sharedTasks : personalTasks;
 
-  // タスク更新関数（モードに応じて振り分け）
   const updateTasksForCurrentMode = (updater) => {
     if (activeTab === 'shared') {
       const nextTasks = typeof updater === 'function' ? updater(sharedTasks) : updater;
+      prevTasksCountRef.current = nextTasks.length;
       setSharedTasks(nextTasks);
       publishSharedTasks(nextTasks);
     } else {
@@ -355,7 +409,7 @@ function App() {
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
           <div className="status-sub-row">
-            <span className="app-subtitle">✨ Gemini AI Powered</span>
+            <span className="app-subtitle">✨ Gemini AI Powered (v2.1 通知対応版)</span>
             {activeTab === 'shared' ? (
               <span className={`sync-status ${isSynced ? 'synced' : 'syncing'}`}>
                 {isSynced ? '🟢 リアルタイム共有中' : '🟡 接続中...'}
@@ -378,6 +432,15 @@ function App() {
             {isListening ? '⏹️ 停止して解析' : '🎙️ 音声入力'}
           </button>
 
+          {/* 通知音クイック切り替えボタン */}
+          <button 
+            className={`btn icon-btn ${soundEnabled ? 'active-sound' : ''}`}
+            onClick={toggleSound}
+            title={soundEnabled ? '通知音: ON' : '通知音: OFF'}
+          >
+            {soundEnabled ? '🔔' : '🔕'}
+          </button>
+
           {/* 会話履歴ボタン */}
           <button 
             className={`btn icon-btn ${showHistoryPanel ? 'active' : ''}`}
@@ -398,7 +461,7 @@ function App() {
         </div>
       </header>
 
-      {/* 🌟 2モード切替タブ (部署共有 vs 個人用) 🌟 */}
+      {/* 2モード切替タブ (部署共有 vs 個人用) */}
       <div className="mode-switch-tabs">
         <button 
           className={`mode-tab shared-tab ${activeTab === 'shared' ? 'active' : ''}`}
@@ -432,6 +495,12 @@ function App() {
               <button className="close-btn" onClick={() => setShowMobileMenu(false)}>✖</button>
             </div>
             <div className="menu-dropdown-list">
+              <button className="menu-item-btn" onClick={toggleSound}>
+                {soundEnabled ? '🔔 新着通知音: ON (タップでOFF)' : '🔕 新着通知音: OFF (タップでON)'}
+              </button>
+              <button className="menu-item-btn" onClick={togglePopup}>
+                {popupEnabled ? '💬 ポップアップ通知: ON (タップでOFF)' : '🔕 ポップアップ通知: OFF (タップでON)'}
+              </button>
               <button className="menu-item-btn" onClick={() => { setShowAddModal(true); setShowMobileMenu(false); }}>
                 ＋ 手動タスク追加 ({activeTab === 'shared' ? '共有へ' : '個人用へ'})
               </button>

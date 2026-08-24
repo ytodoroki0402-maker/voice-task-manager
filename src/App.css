@@ -216,6 +216,12 @@
   position: relative;
 }
 
+.active-sound {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #fbbf24 !important;
+  color: #fbbf24 !important;
+}
+
 .btn-badge {
   background: #ef4444;
   color: white;
