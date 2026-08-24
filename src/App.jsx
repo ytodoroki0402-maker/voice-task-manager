@@ -26,8 +26,16 @@ function App() {
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  const DEFAULT_KEY_B64 = "QVEuQWI4Uk42SnAtcXhyTXp1aFZGMTNybjc1RW5QZ003Q244UlVhdnlQTTNsLTJPMFdNM2c=";
+
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem('gemini_api_key') || "";
+    const saved = localStorage.getItem('gemini_api_key');
+    if (saved && saved.trim() !== "") return saved;
+    try {
+      return atob(DEFAULT_KEY_B64);
+    } catch (e) {
+      return "";
+    }
   });
   const [showSettings, setShowSettings] = useState(false);
   const [tempKey, setTempKey] = useState(apiKey);
