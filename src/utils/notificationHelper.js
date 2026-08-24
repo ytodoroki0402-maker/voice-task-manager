@@ -16,6 +16,26 @@ function getAudioContext() {
 }
 
 /**
+ * 連続する数字を 1 文字ずつのひらがな発声に変換
+ * 例: "1234" -> "いち に さん よん" (「一千二百三十四」と読まれるのを防止)
+ */
+function formatDigitsToKana(str) {
+  const digitMap = {
+    '0': 'ぜろ',
+    '1': 'いち',
+    '2': 'に',
+    '3': 'さん',
+    '4': 'よん',
+    '5': 'ご',
+    '6': 'ろく',
+    '7': 'なな',
+    '8': 'はち',
+    '9': 'きゅう'
+  };
+  return String(str).split('').map(char => digitMap[char] || char).join(' ');
+}
+
+/**
  * 爽やかな通知チャイム音（ピローン♪）を鳴らす
  */
 export function playNotificationSound() {
@@ -55,7 +75,8 @@ export function playNotificationSound() {
 
 /**
  * 新着タスクを自然な日本語音声で読み上げる
- * 例: 「新しいタスクが入りました。1階、患者ID1234、バイタル確認です。」
+ * IDは1桁ずつ数字読み（「いち・に・さん・よん」）に変換
+ * 例: 「新しいタスクが入りました。1階、患者ID いち に さん よん、バイタル確認です。」
  */
 export function speakTaskNotification(task) {
   if (!('speechSynthesis' in window)) {
@@ -64,19 +85,24 @@ export function speakTaskNotification(task) {
   }
 
   try {
-    // 既存の発声をキャンセルして最新をクリアに喋らせる
     window.speechSynthesis.cancel();
 
     const wardText = task.ward && task.ward !== "指定なし" ? `${task.ward}、` : "";
-    const idText = task.patientId === "共通" ? "一般業務、" : task.patientId === "個人" ? "個人メモ、" : task.patientId ? `患者ID ${task.patientId}、` : "";
+    const idText = task.patientId === "共通" 
+      ? "一般業務、" 
+      : task.patientId === "個人" 
+      ? "個人メモ、" 
+      : task.patientId 
+      ? `かんじゃアイディー ${formatDigitsToKana(task.patientId)}、` 
+      : "";
     const contentText = task.content || "タスク";
 
     const fullSpeechText = `新しいタスクが入りました。${wardText}${idText}${contentText}です。`;
 
     const uttr = new SpeechSynthesisUtterance(fullSpeechText);
     uttr.lang = 'ja-JP';
-    uttr.rate = 1.0; // 読み上げ速度
-    uttr.pitch = 1.0; // 声の高さ
+    uttr.rate = 0.95; // 少し落ち着いた聞き取りやすい速度
+    uttr.pitch = 1.0;
 
     window.speechSynthesis.speak(uttr);
   } catch (err) {
