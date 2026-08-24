@@ -1,88 +1,108 @@
-// 高堅牢・マルチ環境対応 リアルタイム同期モジュール
-// CORS制限や院内・社内ネットワークでも確実に同期されるハイブリッド通信
-const SHARED_API_URL = "https://voice-task-manager-default-rtdb.firebaseio.com/shared_tasks.json";
+// ⚡ 完全無料・超高速リアルタイム同期エンジン (ntfy.sh SSE/PubSub)
+// CORS制限なし・アカウント不要で全世界の端末間をリアルタイム双方向同期
+const NTFY_TOPIC_URL = "https://ntfy.sh/ytodoroki_voice_task_share_dept_2026";
 
-let pollTimer = null;
 let eventSource = null;
 
 /**
- * 共有タスクの取得 (GET)
+ * 直近に共有された最新タスクの取得 (Poll / Initial Sync)
  */
-export async function fetchSharedTasks() {
+export async function fetchLatestSharedTasks() {
   try {
-    const res = await fetch(`${SHARED_API_URL}?t=${Date.now()}`);
+    // 直近のキャシュメッセージを1件取得
+    const res = await fetch(`${NTFY_TOPIC_URL}/json?poll=1&scheduled=0`);
     if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-      if (data === null) return [];
-      if (typeof data === 'object') return Object.values(data);
+      const text = await res.text();
+      const lines = text.trim().split('\n').filter(Boolean);
+      for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+          const msgObj = JSON.parse(lines[i]);
+          if (msgObj && msgObj.message) {
+            const payload = JSON.parse(msgObj.message);
+            if (payload && payload.type === 'SYNC_TASKS' && Array.isArray(payload.tasks)) {
+              return payload.tasks;
+            }
+          }
+        } catch (e) {}
+      }
     }
   } catch (err) {
-    console.warn("Shared tasks fetch warning:", err);
+    console.warn("Initial sync fetch warning:", err);
   }
   return null;
 }
 
 /**
- * 部署共有タスクの変更をリアルタイム監視・自動同期
+ * 部署共有タスクのリアルタイム監視 (EventSource / SSE)
  */
 export function subscribeSharedTasks(onUpdate, onError) {
-  let isConnected = false;
-
-  // 1. 即時取得
-  fetchSharedTasks().then((tasks) => {
-    if (tasks !== null) {
-      onUpdate(tasks);
-      isConnected = true;
+  // 1. 接続開始時に直近の共有タスクを即時復元
+  fetchLatestSharedTasks().then((latestTasks) => {
+    if (latestTasks !== null) {
+      onUpdate(latestTasks);
     }
   });
 
-  // 2. 高速定期同期 (ポーリング: 2秒ごと) - ネットワーク環境に左右されず確実に同期
-  pollTimer = setInterval(async () => {
-    const tasks = await fetchSharedTasks();
-    if (tasks !== null) {
-      onUpdate(tasks);
-      if (!isConnected) {
-        isConnected = true;
-      }
-    }
-  }, 2000);
-
-  // 3. SSE (Server-Sent Events) リアルタイムプッシュ試行
+  // 2. ntfy SSE (Server-Sent Events) で他人の操作をリアルタイム受信
   try {
-    eventSource = new EventSource(SHARED_API_URL);
+    if (eventSource) {
+      eventSource.close();
+    }
+
+    eventSource = new EventSource(`${NTFY_TOPIC_URL}/sse`);
+
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data && data.path === "/") {
-          const tasks = data.data;
-          if (Array.isArray(tasks)) onUpdate(tasks);
-          else if (tasks === null) onUpdate([]);
-          else if (typeof tasks === 'object') onUpdate(Object.values(tasks));
+        const msgObj = JSON.parse(event.data);
+        if (msgObj && msgObj.event === 'message' && msgObj.message) {
+          const payload = JSON.parse(msgObj.message);
+          if (payload && payload.type === 'SYNC_TASKS' && Array.isArray(payload.tasks)) {
+            console.log("⚡ Realtime task update received from another user!", payload.tasks);
+            onUpdate(payload.tasks);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Failed to parse SSE payload:", e);
+      }
     };
-  } catch (e) {}
+
+    eventSource.onerror = (err) => {
+      console.warn("NTFY SSE connection status:", err);
+      if (onError) onError(err);
+    };
+  } catch (err) {
+    console.error("NTFY SSE init error:", err);
+    if (onError) onError(err);
+  }
 
   return () => {
-    if (pollTimer) clearInterval(pollTimer);
-    if (eventSource) eventSource.close();
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
   };
 }
 
 /**
- * 部署共有タスクをクラウドへ即時送信
+ * 部署共有タスクを他員全員の画面へ超高速リアルタイム配信
  */
 export async function publishSharedTasks(tasks) {
   try {
-    await fetch(SHARED_API_URL, {
-      method: 'PUT',
+    const payload = {
+      type: 'SYNC_TASKS',
+      timestamp: Date.now(),
+      tasks: tasks
+    };
+
+    await fetch(NTFY_TOPIC_URL, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(tasks)
+      body: JSON.stringify(payload)
     });
+    console.log("⚡ Published task update to all department users!");
   } catch (err) {
-    console.error("Network error publishing shared tasks:", err);
+    console.error("Failed to publish tasks to ntfy:", err);
   }
 }

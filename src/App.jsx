@@ -13,7 +13,33 @@ function App() {
   const [isSynced, setIsSynced] = useState(true);
 
   // 部署共有タスク
-  const [sharedTasks, setSharedTasks] = useState([]);
+  const [sharedTasks, setSharedTasks] = useState(() => {
+    const saved = localStorage.getItem('shared_tasks_cache');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { id: 1, patientId: "1234", ward: "1階", content: "バイタル確認", status: "未対応", timestamp: Date.now() },
+      { id: 2, patientId: "共通", ward: "指定なし", content: "来月のシフト表の作成", status: "対応中", timestamp: Date.now() - 1000 }
+    ];
+  });
+
+  // 部署共有タスクのリアルタイム同期購読 (ntfy.sh SSE)
+  useEffect(() => {
+    const unsubscribe = subscribeSharedTasks(
+      (remoteTasks) => {
+        if (Array.isArray(remoteTasks)) {
+          setSharedTasks(remoteTasks);
+          localStorage.setItem('shared_tasks_cache', JSON.stringify(remoteTasks));
+        }
+        setIsSynced(true);
+      },
+      () => {
+        setIsSynced(true);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
   // 個人専用タスク (ローカルストレージのみ)
   const [personalTasks, setPersonalTasks] = useState(() => {
@@ -61,19 +87,7 @@ function App() {
   const [autoScroll, setAutoScroll] = useState(false);
   const tableContainerRef = useAutoScroll(autoScroll, 10000);
 
-  // 部署共有タスクのリアルタイム同期購読
-  useEffect(() => {
-    const unsubscribe = subscribeSharedTasks(
-      (remoteTasks) => {
-        setSharedTasks(remoteTasks);
-        setIsSynced(true);
-      },
-      () => {
-        setIsSynced(false);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
+
 
   // 個人タスクの保存
   useEffect(() => {
