@@ -1,33 +1,51 @@
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 20px;
+  min-height: 100vh;
+  padding: 16px;
   max-width: 1600px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
+/* Header & Title Area */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  padding: 15px 25px;
+  backdrop-filter: blur(12px);
+  padding: 14px 20px;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
-}
-
-.header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.controls {
-  display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-title-area {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-title-area h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.app-subtitle {
+  font-size: 0.75rem;
+  color: #60a5fa;
+  font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
@@ -35,35 +53,150 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid var(--glass-border);
   color: white;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.btn.active {
+.btn-voice {
   background: #3b82f6;
   border-color: #60a5fa;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
+.btn-voice:hover {
+  background: #2563eb;
+}
+
+.btn-voice.active {
+  background: #ef4444;
+  border-color: #f87171;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+  animation: pulse 1.5s infinite;
+}
+
+.icon-btn {
+  padding: 8px 12px;
+  position: relative;
+}
+
+.btn-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 2px;
+}
+
+/* Menu Modal/Overlay */
+.menu-dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.menu-dropdown-content {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  margin-top: 50px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  animation: fadeInDown 0.25s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.menu-dropdown-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: white;
+}
+
+.menu-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+}
+
+.menu-item-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  text-align: left;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-item-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.menu-item-btn.danger-item {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.menu-item-btn.danger-item:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Kanban Board Layout */
 .kanban-board {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   flex: 1;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .kanban-column {
   flex: 1;
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   background: var(--glass-bg);
@@ -74,17 +207,18 @@
 }
 
 .kanban-column h2 {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   text-align: center;
-  color: var(--text-muted);
+  color: #cbd5e1;
   border-bottom: 1px solid var(--border-color);
-  padding: 15px;
+  padding: 12px;
+  margin: 0;
   background: rgba(15, 23, 42, 0.8);
-  z-index: 10;
+  font-weight: 600;
 }
 
 .kanban-cards {
-  padding: 15px;
+  padding: 12px;
   overflow-y: auto;
   flex: 1;
 }
@@ -92,13 +226,13 @@
 .task-card {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
   transition: transform 0.2s, background-color 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .task-card:hover {
@@ -107,7 +241,7 @@
 }
 
 .task-card.status-DONE {
-  opacity: 0.5;
+  opacity: 0.6;
   background: rgba(0, 0, 0, 0.2);
 }
 
@@ -119,8 +253,8 @@
 
 .task-id {
   font-weight: bold;
-  font-size: 1.1rem;
-  color: #fff;
+  font-size: 1rem;
+  color: #38bdf8;
 }
 
 .task-id.general {
@@ -129,24 +263,24 @@
 
 .ward-badge {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: white;
 }
 
 .task-content {
-  font-size: 1.1rem;
+  font-size: 1rem;
   line-height: 1.4;
-  color: #e2e8f0;
+  color: #f1f5f9;
 }
 
 .task-card-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 5px;
-  padding-top: 10px;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -154,9 +288,9 @@
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #cbd5e1;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -187,45 +321,42 @@
 
 .speech-overlay {
   position: fixed;
-  bottom: 30px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
-  padding: 12px 24px;
+  padding: 10px 20px;
   border-radius: 20px;
   border: 1px solid #3b82f6;
   color: #60a5fa;
-  font-size: 0.9rem;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  font-size: 0.85rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   z-index: 100;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.6); }
-  100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+  max-width: 90vw;
+  text-align: center;
 }
 
 .empty-state {
-  padding: 40px;
+  padding: 30px 10px;
   text-align: center;
   color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
+/* Conversation Drawer */
 .conversation-drawer {
   position: fixed;
   top: 0;
   right: 0;
   width: 400px;
-  max-width: 90vw;
+  max-width: 100vw;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(16px);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-  z-index: 500;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
 }
@@ -243,7 +374,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: #f8fafc;
 }
@@ -261,17 +392,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.btn-sm {
-  padding: 4px 10px;
-  font-size: 0.8rem;
-}
-
-.danger-text {
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.1);
 }
 
 .close-btn {
@@ -299,46 +419,31 @@
 .chat-timeline {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .chat-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.chat-item.has-error {
-  border-left: 3px solid #ef4444;
-  padding-left: 8px;
 }
 
 .chat-timestamp {
   font-size: 0.75rem;
   color: #64748b;
   text-align: center;
-  margin-bottom: 4px;
 }
 
-.user-bubble {
+.user-bubble, .ai-bubble {
   display: flex;
-  gap: 10px;
-  align-self: flex-start;
-  max-width: 90%;
-}
-
-.ai-bubble {
-  display: flex;
-  gap: 10px;
-  align-self: flex-start;
+  gap: 8px;
   max-width: 95%;
-  margin-left: 12px;
 }
 
 .bubble-icon {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1;
   padding-top: 2px;
 }
@@ -346,109 +451,113 @@
 .bubble-content {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 8px 12px;
   flex: 1;
 }
 
 .user-bubble .bubble-content {
   background: rgba(59, 130, 246, 0.15);
   border-color: rgba(59, 130, 246, 0.3);
-  border-top-left-radius: 2px;
 }
 
 .ai-bubble .bubble-content {
   background: rgba(30, 41, 59, 0.9);
   border-color: rgba(255, 255, 255, 0.12);
-  border-top-left-radius: 2px;
 }
 
 .bubble-label {
   font-size: 0.7rem;
   color: #94a3b8;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .bubble-text {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: #e2e8f0;
   line-height: 1.4;
-  word-break: break-word;
 }
 
 .ai-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .ai-result-text {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: #f1f5f9;
   line-height: 1.4;
   font-weight: 500;
 }
 
 .action-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
 }
 
-.badge-add {
-  background: rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
-.badge-start {
-  background: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.badge-complete {
-  background: rgba(16, 185, 129, 0.25);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-}
-
-.badge-error {
-  background: rgba(239, 68, 68, 0.25);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
+.badge-add { background: rgba(59, 130, 246, 0.25); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+.badge-start { background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+.badge-complete { background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+.badge-error { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
 
 .parsed-details {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 6px;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .detail-tag {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
 }
+.detail-tag.ward { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+.detail-tag.patient { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+.detail-tag.content { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
 
-.detail-tag.ward {
-  background: rgba(139, 92, 246, 0.2);
-  color: #c084fc;
-}
+/* ===================================================
+   📱 Mobile Responsive Layout Optimization (max-width: 768px)
+   =================================================== */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 10px;
+  }
 
-.detail-tag.patient {
-  background: rgba(14, 165, 233, 0.2);
-  color: #38bdf8;
-}
+  .header {
+    padding: 12px 14px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 
-.detail-tag.content {
-  background: rgba(16, 185, 129, 0.2);
-  color: #6ee7b7;
+  .app-title-area h1 {
+    font-size: 1.05rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.7rem;
+  }
+
+  /* 💡 カンバンボードを縦並び（縦配置）に切り替え！ */
+  .kanban-board {
+    flex-direction: column;
+    overflow-x: visible;
+    gap: 16px;
+  }
+
+  .kanban-column {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .kanban-cards {
+    max-height: none;
+  }
 }

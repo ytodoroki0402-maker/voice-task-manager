@@ -24,6 +24,7 @@ function App() {
     return [];
   });
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const [apiKey, setApiKey] = useState(() => {
     return localStorage.getItem('gemini_api_key') || "";
@@ -113,7 +114,7 @@ function App() {
 
   const handleAudioRecorded = async (audioBlob) => {
     if (!apiKey) {
-      alert("Gemini APIキーを設定してください（右上の「⚙️ 設定」ボタンから入力できます）");
+      alert("Gemini APIキーを設定してください（メニューの「⚙️ 設定」から入力できます）");
       setShowSettings(true);
       return;
     }
@@ -286,49 +287,78 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* 最上部ヘッダー */}
       <header className="header">
-        <h1>🏥 VoiceTask Manager <span style={{fontSize: '0.8rem', color: '#4285F4'}}>✨ Gemini Powered</span></h1>
-        <div className="controls">
+        <div className="app-title-area">
+          <h1>🏥 薬剤部音声タスクマネージャー</h1>
+          <span className="app-subtitle">✨ Gemini AI Powered</span>
+        </div>
+        
+        <div className="header-actions">
+          {/* 音声入力ボタン (メイン表示) */}
           <button 
-            className={`btn ${isListening ? 'active' : ''}`}
+            className={`btn btn-voice ${isListening ? 'active' : ''}`}
             onClick={isListening ? stopListening : startListening}
             disabled={isProcessing}
           >
-            {isListening ? '録音を停止して解析' : '🎙️ 音声入力'}
+            {isListening ? '⏹️ 停止して解析' : '🎙️ 音声入力'}
           </button>
 
-          <button className="btn" onClick={() => setShowAddModal(true)}>
-            ＋ 手動追加
-          </button>
-
+          {/* 会話履歴クイックボタン */}
           <button 
-            className={`btn ${showHistoryPanel ? 'active' : ''}`}
+            className={`btn icon-btn ${showHistoryPanel ? 'active' : ''}`}
             onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+            title="会話履歴"
           >
-            💬 会話履歴 {conversationHistory.length > 0 && `(${conversationHistory.length})`}
+            💬 {conversationHistory.length > 0 && <span className="btn-badge">{conversationHistory.length}</span>}
           </button>
 
+          {/* メニュー開閉ボタン */}
           <button 
-            className={`btn ${autoScroll ? 'active' : ''}`}
-            onClick={() => setAutoScroll(!autoScroll)}
+            className="btn icon-btn"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            title="メニュー"
           >
-            サイネージ {autoScroll ? 'ON' : 'OFF'}
-          </button>
-          
-          <button className="btn" onClick={() => { setTempKey(apiKey); setShowSettings(true); }}>
-            ⚙️ 設定
-          </button>
-          <button className="btn" onClick={exportLogs}>
-            解析出力
-          </button>
-          <button className="btn" onClick={() => setTasks([])} style={{borderColor: '#ef4444', color: '#ef4444', background: 'transparent'}}>
-            クリア
+            🍔 メニュー
           </button>
         </div>
       </header>
 
-      {error && <div style={{color: '#ef4444', marginBottom: 10}}>{error}</div>}
+      {/* サブ操作メニューパネル (モーダル風) */}
+      {showMobileMenu && (
+        <div className="menu-dropdown-overlay" onClick={() => setShowMobileMenu(false)}>
+          <div className="menu-dropdown-content" onClick={e => e.stopPropagation()}>
+            <div className="menu-dropdown-header">
+              <h3>⚙️ 操作メニュー</h3>
+              <button className="close-btn" onClick={() => setShowMobileMenu(false)}>✖</button>
+            </div>
+            <div className="menu-dropdown-list">
+              <button className="menu-item-btn" onClick={() => { setShowAddModal(true); setShowMobileMenu(false); }}>
+                ＋ 手動タスク追加
+              </button>
+              <button className="menu-item-btn" onClick={() => { setShowHistoryPanel(true); setShowMobileMenu(false); }}>
+                💬 会話・解析履歴 ({conversationHistory.length})
+              </button>
+              <button className="menu-item-btn" onClick={() => setAutoScroll(!autoScroll)}>
+                📺 サイネージ表示: {autoScroll ? 'ON' : 'OFF'}
+              </button>
+              <button className="menu-item-btn" onClick={() => { setTempKey(apiKey); setShowSettings(true); setShowMobileMenu(false); }}>
+                ⚙️ Gemini APIキー設定
+              </button>
+              <button className="menu-item-btn" onClick={() => { exportLogs(); setShowMobileMenu(false); }}>
+                📥 解析ログダウンロード
+              </button>
+              <button className="menu-item-btn danger-item" onClick={() => { setTasks([]); setShowMobileMenu(false); }}>
+                🗑️ 全タスクをクリア
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {error && <div style={{color: '#ef4444', marginBottom: 10, textAlign: 'center'}}>{error}</div>}
+
+      {/* カンバンボード (画面幅に応じてレスポンシブ縦並び化) */}
       <div className="kanban-board">
         {renderColumn(STATUS.TODO, todoTasks, "TODO")}
         {renderColumn(STATUS.IN_PROGRESS, inProgressTasks, "IN_PROGRESS")}
@@ -353,16 +383,17 @@ function App() {
         </div>
       )}
 
+      {/* 手動追加モーダル */}
       {showAddModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px'
         }}>
           <form onSubmit={handleManualAddSubmit} style={{
-            background: '#1e293b', padding: '30px', borderRadius: '12px', width: '450px',
+            background: '#1e293b', padding: '25px', borderRadius: '12px', width: '100%', maxWidth: '450px',
             border: '1px solid #334155'
           }}>
-            <h2 style={{marginTop: 0, color: 'white'}}>＋ タスクを手動追加</h2>
+            <h2 style={{marginTop: 0, color: 'white', fontSize: '1.3rem'}}>＋ タスクを手動追加</h2>
             
             <div style={{marginBottom: '15px'}}>
               <label style={{display: 'block', color: '#cbd5e1', marginBottom: '6px'}}>病棟</label>
@@ -391,7 +422,7 @@ function App() {
                 placeholder="例: 1234 (空欄の場合は共通業務)"
                 style={{
                   width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #475569',
-                  background: '#0f172a', color: 'white'
+                  background: '#0f172a', color: 'white', boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -406,7 +437,7 @@ function App() {
                 placeholder="例: バイタル測定、点滴確認"
                 style={{
                   width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #475569',
-                  background: '#0f172a', color: 'white'
+                  background: '#0f172a', color: 'white', boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -419,16 +450,17 @@ function App() {
         </div>
       )}
 
+      {/* 設定モーダル */}
       {showSettings && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px'
         }}>
           <div style={{
-            background: '#1e293b', padding: '30px', borderRadius: '12px', width: '500px',
+            background: '#1e293b', padding: '25px', borderRadius: '12px', width: '100%', maxWidth: '500px',
             border: '1px solid #334155'
           }}>
-            <h2 style={{marginTop: 0, color: 'white'}}>⚙️ システム設定</h2>
+            <h2 style={{marginTop: 0, color: 'white', fontSize: '1.3rem'}}>⚙️ システム設定</h2>
             <div style={{marginBottom: '20px'}}>
               <label style={{display: 'block', color: '#cbd5e1', marginBottom: '8px'}}>Gemini APIキー</label>
               <input 
@@ -437,9 +469,9 @@ function App() {
                 onChange={e => setTempKey(e.target.value)}
                 style={{
                   width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #475569',
-                  background: '#0f172a', color: 'white'
+                  background: '#0f172a', color: 'white', boxSizing: 'border-box'
                 }}
-                placeholder="AQ..."
+                placeholder="AIzaSy..."
               />
             </div>
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
