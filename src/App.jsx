@@ -434,7 +434,7 @@ function App() {
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
           <div className="status-sub-row">
-            <span className="app-subtitle">✨ Gemini AI Powered (v2.3 ID1桁読み対応)</span>
+            <span className="app-subtitle">✨ Gemini AI Powered (v2.4 永久保存＆リアルタイム対応)</span>
             {activeTab === 'shared' ? (
               <span className={`sync-status ${isSynced ? 'synced' : 'syncing'}`}>
                 {isSynced ? '🟢 リアルタイム共有中' : '🟡 接続中...'}
