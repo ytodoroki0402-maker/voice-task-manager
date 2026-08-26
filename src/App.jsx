@@ -11,7 +11,8 @@ import {
   speakTaskNotification, 
   testSpeechNotification, 
   requestNotificationPermission, 
-  showTaskNotification 
+  showTaskNotification,
+  unlockAudio
 } from './utils/notificationHelper';
 
 function App() {
@@ -428,13 +429,13 @@ function App() {
   );
 
   return (
-    <div className={`app-container mode-${activeTab}`}>
+    <div className={`app-container mode-${activeTab}`} onClick={unlockAudio} onTouchStart={unlockAudio}>
       {/* 最上部ヘッダー */}
       <header className="header">
         <div className="app-title-area">
           <h1>🏥 薬剤部音声タスクマネージャー</h1>
           <div className="status-sub-row">
-            <span className="app-subtitle">✨ Gemini AI Powered (v2.4 永久保存＆リアルタイム対応)</span>
+            <span className="app-subtitle">✨ Gemini AI Powered (v2.5 音声解錠対応)</span>
             {activeTab === 'shared' ? (
               <span className={`sync-status ${isSynced ? 'synced' : 'syncing'}`}>
                 {isSynced ? '🟢 リアルタイム共有中' : '🟡 接続中...'}

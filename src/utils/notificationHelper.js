@@ -1,6 +1,7 @@
-// Web Audio API & Web Speech API (音声読み上げ) モジュール
+// Web Audio API & Web Speech API (音声読み上げ & iOS/Android 音声解錠) モジュール
 
 let audioCtx = null;
+let isUnlocked = false;
 
 function getAudioContext() {
   if (!audioCtx) {
@@ -16,8 +17,31 @@ function getAudioContext() {
 }
 
 /**
+ * 📱 iOS / Safari / Android 用 音声再生ロックの解除 (User Gesture Unlock)
+ * ユーザーが画面を1回でもタップした際に呼び出すことで、バックグラウンドでの自動読み上げを許可する
+ */
+export function unlockAudio() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    if ('speechSynthesis' in window) {
+      // iOS Safari の音声読み上げロック解除用ダミー発声
+      const dummyUttr = new SpeechSynthesisUtterance('');
+      dummyUttr.volume = 0;
+      window.speechSynthesis.speak(dummyUttr);
+    }
+    isUnlocked = true;
+  } catch (e) {
+    console.warn("Audio unlock warning:", e);
+  }
+}
+
+/**
  * 連続する数字を 1 文字ずつのひらがな発声に変換
- * 例: "1234" -> "いち に さん よん" (「一千二百三十四」と読まれるのを防止)
+ * 例: "1234" -> "いち に さん よん"
  */
 function formatDigitsToKana(str) {
   const digitMap = {
@@ -40,6 +64,7 @@ function formatDigitsToKana(str) {
  */
 export function playNotificationSound() {
   try {
+    unlockAudio();
     const ctx = getAudioContext();
     if (!ctx) return;
 
@@ -75,7 +100,6 @@ export function playNotificationSound() {
 
 /**
  * 新着タスクを自然な日本語音声で読み上げる
- * IDは1桁ずつ数字読み（「いち・に・さん・よん」）に変換
  * 例: 「新しいタスクが入りました。1階、患者ID いち に さん よん、バイタル確認です。」
  */
 export function speakTaskNotification(task) {
@@ -85,6 +109,9 @@ export function speakTaskNotification(task) {
   }
 
   try {
+    unlockAudio();
+
+    // キャンセルしてから少しディレイを挟んで確実に読み上げ
     window.speechSynthesis.cancel();
 
     const wardText = task.ward && task.ward !== "指定なし" ? `${task.ward}、` : "";
@@ -99,12 +126,15 @@ export function speakTaskNotification(task) {
 
     const fullSpeechText = `新しいタスクが入りました。${wardText}${idText}${contentText}です。`;
 
-    const uttr = new SpeechSynthesisUtterance(fullSpeechText);
-    uttr.lang = 'ja-JP';
-    uttr.rate = 0.95; // 少し落ち着いた聞き取りやすい速度
-    uttr.pitch = 1.0;
+    setTimeout(() => {
+      const uttr = new SpeechSynthesisUtterance(fullSpeechText);
+      uttr.lang = 'ja-JP';
+      uttr.rate = 0.95; // 少し落ち着いた速度
+      uttr.pitch = 1.0;
+      uttr.volume = 1.0;
 
-    window.speechSynthesis.speak(uttr);
+      window.speechSynthesis.speak(uttr);
+    }, 100);
   } catch (err) {
     console.warn("Failed to speak task:", err);
   }
