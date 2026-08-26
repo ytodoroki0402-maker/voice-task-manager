@@ -50,7 +50,7 @@ export async function parseAudioWithGemini(audioBlob, apiKey) {
 - ward: "1階", "2階", "HCU", "SCU" のいずれか（指定がない場合は "指定なし"）
 - id: 患者ID（数字のみの文字列）。発言にIDがない場合は null
 - content: タスクの具体的な内容（発言から病棟名、ID、アクションに関する言葉を除外し、端的にまとめたもの。例: "点滴交換", "バイタル確認"）
-- status: actionがADDなら "未対応", STARTなら "対応中", COMPLETEなら "完了"
+- status: actionがADDなら絶対に "未対応"（新規タスクは必ず未対応から始まります）, STARTなら "対応中", COMPLETEなら "完了"
 - transcribed_text: 音声を文字起こしした全文（日本語）
 
 JSONのみを出力してください（Markdownのバッククォートなどは含めないでください）。

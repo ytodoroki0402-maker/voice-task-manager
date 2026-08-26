@@ -302,7 +302,7 @@ function App() {
             patientId: parsed.id || (activeTab === 'shared' ? "共通" : "個人"),
             ward: parsed.ward,
             content: parsed.content,
-            status: parsed.status, 
+            status: STATUS.TODO, // 💥 新規追加時は絶対に「未対応」からスタート
             timestamp: Date.now()
           };
           newTasks.push(newTask);
